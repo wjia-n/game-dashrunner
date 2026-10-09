@@ -151,7 +151,7 @@ class _ComparisonCard extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: Text(r[0],
-                          style: body(14, theme, color: Colors.white80)),
+                          style: body(14, theme, color: Colors.white.withValues(alpha: 0.8))),
                     ),
                     Center(
                         child: Text(r[1],

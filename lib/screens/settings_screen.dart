@@ -117,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       '😱 Near misses earn +5 pts — thread the needle!\n'
                       '🚩 Every 500 m is a milestone worth +25 pts.\n'
                       '⚡ Speed keeps rising. One crash ends the run.',
-                      style: body(14, t, color: Colors.white80),
+                      style: body(14, t, color: Colors.white.withValues(alpha: 0.8)),
                     ),
                   ],
                 ),
