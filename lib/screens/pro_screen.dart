@@ -30,19 +30,10 @@ class _ProScreenState extends State<ProScreen> {
   @override
   void initState() {
     super.initState();
-    widget.store.proPurchased.addListener(_onPro);
     widget.store.lastThanks.addListener(_onThanks);
   }
 
-  void _onPro() {
-    if (widget.store.proPurchased.value && mounted) {
-      widget.settings.setPro(true);
-      widget.audio.newBest();
-      showTrailSnack(context, 'PRO unlocked — the whole trail is yours!', _t);
-      widget.store.proPurchased.value = false;
-    }
-  }
-
+  
   void _onThanks() {
     final msg = widget.store.lastThanks.value;
     if (msg == null || !mounted) return;
@@ -53,7 +44,6 @@ class _ProScreenState extends State<ProScreen> {
 
   @override
   void dispose() {
-    widget.store.proPurchased.removeListener(_onPro);
     widget.store.lastThanks.removeListener(_onThanks);
     super.dispose();
   }
@@ -85,183 +75,12 @@ class _ProScreenState extends State<ProScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             child: Column(
               children: [
-                _ComparisonCard(theme: t, isPro: s.isPro),
-                const SizedBox(height: 16),
-                _BuyCard(
-                    theme: t, settings: s, store: store, audio: widget.audio),
-                const SizedBox(height: 16),
-                _TipsCard(theme: t, store: store, audio: widget.audio),
+                                _TipsCard(theme: t, store: store, audio: widget.audio),
                 const SizedBox(height: 24),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ComparisonCard extends StatelessWidget {
-  final RunnerThemeDef theme;
-  final bool isPro;
-  const _ComparisonCard({required this.theme, required this.isPro});
-
-  @override
-  Widget build(BuildContext context) {
-    const rows = [
-      ['Trail themes', '4', 'All 13'],
-      ['Runner gear styles', '4', 'All 8'],
-      ['Obstacle styles', '4', 'All 8'],
-      ['Custom theme creator', '—', '✓'],
-      ['Extreme Dash mode', '—', '✓'],
-      ['Score Attack mode', '✓', '✓'],
-      ['Full game, no ads', '✓', '✓'],
-    ];
-    return WoodCard(
-      theme: theme,
-      child: Column(
-        children: [
-          Text('FREE vs PRO', style: display(20, theme)),
-          const SizedBox(height: 10),
-          Table(
-            columnWidths: const {
-              0: FlexColumnWidth(2.2),
-              1: FlexColumnWidth(1),
-              2: FlexColumnWidth(1),
-            },
-            children: [
-              TableRow(
-                children: [
-                  const SizedBox(),
-                  Center(
-                      child: Text('FREE',
-                          style: body(13, theme,
-                              color: Colors.white60,
-                              weight: FontWeight.w800))),
-                  Center(
-                      child: Text('PRO',
-                          style: body(13, theme,
-                              color: const Color(0xFFD4A017),
-                              weight: FontWeight.w800))),
-                ],
-              ),
-              for (final r in rows)
-                TableRow(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      child: Text(r[0],
-                          style: body(14, theme, color: Colors.white.withValues(alpha: 0.8))),
-                    ),
-                    Center(
-                        child: Text(r[1],
-                            style: body(14, theme,
-                                color: Colors.white60))),
-                    Center(
-                        child: Text(r[2],
-                            style: body(14, theme,
-                                color: const Color(0xFFD4A017),
-                                weight: FontWeight.w800))),
-                  ],
-                ),
-            ],
-          ),
-          if (isPro)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text('⭐ You are PRO — everything is unlocked!',
-                  style: body(14, theme,
-                      color: const Color(0xFFD4A017),
-                      weight: FontWeight.w800)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BuyCard extends StatelessWidget {
-  final RunnerThemeDef theme;
-  final DashSettings settings;
-  final StoreService store;
-  final DashAudio audio;
-  const _BuyCard(
-      {required this.theme,
-      required this.settings,
-      required this.store,
-      required this.audio});
-
-  @override
-  Widget build(BuildContext context) {
-    final product = store.proProduct;
-    return WoodCard(
-      theme: theme,
-      child: Column(
-        children: [
-          Text('Unlock PRO forever', style: display(18, theme)),
-          const SizedBox(height: 6),
-          Text('One payment. Yours on every device.',
-              style: body(13, theme, color: Colors.white60)),
-          const SizedBox(height: 12),
-          if (settings.isPro)
-            Text('Already unlocked — enjoy the trail!',
-                style: body(15, theme,
-                    color: const Color(0xFFD4A017),
-                    weight: FontWeight.w800))
-          else if (!store.storeReady)
-            Text(
-              'Purchases will appear here once the store listing is set up. '
-              '(${store.error ?? 'Not ready yet'})',
-              textAlign: TextAlign.center,
-              style: body(14, theme, color: Colors.white60),
-            )
-          else if (product == null)
-            Text('PRO product not configured yet — check back soon!',
-                textAlign: TextAlign.center,
-                style: body(14, theme, color: Colors.white60))
-          else
-            TrailButton(
-              label: 'GET PRO — ${product.price}',
-              icon: Icons.workspace_premium,
-              theme: theme,
-              onPressed: () {
-                audio.click();
-                store.buyPro();
-              },
-            ),
-          ValueListenableBuilder<String?>(
-            valueListenable: store.purchaseError,
-            builder: (_, err, _) => err == null
-                ? const SizedBox()
-                : Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(err,
-                        style: body(13, theme,
-                            color: const Color(0xFFFF8A7A))),
-                  ),
-          ),
-          ValueListenableBuilder<bool>(
-            valueListenable: store.purchaseInProgress,
-            builder: (_, busy, _) => busy
-                ? const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: CircularProgressIndicator(),
-                  )
-                : const SizedBox(),
-          ),
-          const SizedBox(height: 10),
-          TextButton(
-            onPressed: () {
-              audio.click();
-              store.restore();
-              showTrailSnack(context,
-                  'Checking your past purchases…', theme);
-            },
-            child: Text('Restore purchases',
-                style: body(14, theme,
-                    color: theme.accent, weight: FontWeight.w700)),
-          ),
-        ],
       ),
     );
   }

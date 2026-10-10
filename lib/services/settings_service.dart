@@ -42,7 +42,7 @@ class DashSettings extends ChangeNotifier {
   String runnerStyleId = 'ember';
   String obstacleStyleId = 'crates';
   String modeId = 'trail';
-  bool isPro = false;
+  bool isPro = true; // everything unlocked — no Pro version
 
   Map<String, int> customColors = Map.of(defaultCustomColors);
 
