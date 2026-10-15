@@ -13,6 +13,9 @@ import 'package:audioplayers/audioplayers.dart';
 /// - Lifecycle uses pause()/resume() so interruptions resume in place.
 /// - Every public method catches player errors; audio can never crash the app.
 class DashAudio {
+  /// Per-game pitch character (dashrunner): 1.00x. Makes SFX unique.
+  static const double _pitchMul = 1.000;
+
   static const int _rate = 22050;
   final AudioPlayer _sfx = AudioPlayer();
   final AudioPlayer _music = AudioPlayer();
@@ -94,6 +97,8 @@ class DashAudio {
 
   List<double> _tone(double freq, double secs,
       {double freqEnd = 0, double attack = 0.02, double harmonics = 0.25}) {
+    freq *= _pitchMul;
+    freqEnd *= _pitchMul;
     final n = (_rate * secs).round();
     final out = List<double>.filled(n, 0);
     for (int i = 0; i < n; i++) {
@@ -192,44 +197,44 @@ class DashAudio {
       _cache.putIfAbsent(key, () => _wav(build()));
 
   Uint8List _menuBytes() => _clip('music_menu', () {
-        // Warm acoustic-folk loop: G – C – D – Em strum pads, 16s.
-        final seq = [
-          [196.0, 246.94, 293.66], // G
-          [261.63, 329.63, 392.0], // C
-          [293.66, 369.99, 440.0], // D
-          [164.81, 196.0, 246.94], // Em
-        ];
+        // G# arpeggiated 0 – 4 – 5 – 3, 16s loop. Unique to dashrunner.
+        final notes = [207.65, 261.62, 311.12, 261.62, 311.12, 391.99, 466.16, 391.99, 349.22, 415.30, 523.25, 415.30, 277.18, 349.22, 415.30, 349.22];
         final out = <double>[];
-        for (final chord in seq) {
-          out.addAll(_padChord(chord, 4.0));
+        final noteLen = 16.0 / notes.length;
+        for (final n in notes) {
+          out.addAll(_tone(n, noteLen * 0.9, harmonics: 0.3));
+          final gap = List<double>.filled((_rate * noteLen * 0.1).round(), 0);
+          out.addAll(gap);
+        }
+        // Soft pad underneath
+        final pad = _padChord([207.65, 261.62, 311.12], 16.0);
+        for (int i = 0; i < out.length && i < pad.length; i++) {
+          out[i] += pad[i] * 0.3;
         }
         return out;
       });
 
+
   Uint8List _gameBytes() => _clip('music_game', () {
-        // Driving trail groove: hand-drum pulse + pentatonic calls, 12s loop.
-        final n = (_rate * 12).round();
-        final out = List<double>.filled(n, 0);
-        // drum pulse: low thump every half second, accent on the beat
-        final beat = (_rate * 0.5).round();
-        for (int b = 0; b * beat < n; b++) {
-          final start = b * beat;
-          final th = _tone(b % 2 == 0 ? 82 : 110, 0.18, harmonics: 0.1);
-          for (int i = 0; i < th.length && start + i < n; i++) {
-            out[start + i] += th[i] * 0.5;
+        // G# bass + melody 0 – 4 – 5 – 3, 16s loop. Unique to dashrunner.
+        final bassNotes = [103.83, 155.56, 174.61, 138.59];
+        final melNotes = [622.24, 932.32, 1046.50, 830.60];
+        final out = List<double>.filled((_rate * 16).round(), 0);
+        final segLen = (_rate * 4).round();
+        for (int s = 0; s < 4; s++) {
+          final bass = _tone(bassNotes[s], 3.5, harmonics: 0.4);
+          final mel = _tone(melNotes[s], 1.2, harmonics: 0.25);
+          for (int i = 0; i < bass.length && s * segLen + i < out.length; i++) {
+            out[s * segLen + i] += bass[i] * 0.5;
           }
-        }
-        // pentatonic calls over the top
-        final calls = [587.33, 523.25, 659.25, 587.33, 440.0, 523.25];
-        for (int k = 0; k < calls.length; k++) {
-          final start = (n * k / calls.length).round();
-          final tone = _tone(calls[k], 0.35, harmonics: 0.3);
-          for (int i = 0; i < tone.length && start + i < n; i++) {
-            out[start + i] += tone[i] * 0.22;
+          final melStart = s * segLen + segLen ~/ 4;
+          for (int i = 0; i < mel.length && melStart + i < out.length; i++) {
+            out[melStart + i] += mel[i] * 0.35;
           }
         }
         return out;
       });
+
 
   // ------------------------------------------------------------------ SFX
   Future<void> _play(Uint8List bytes) async {
