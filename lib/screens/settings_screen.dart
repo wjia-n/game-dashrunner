@@ -4,6 +4,7 @@ import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../theme/runner_themes.dart';
 import 'widgets.dart';
+import '../transfer/transfer_ui.dart';
 
 /// Settings: music/SFX toggles, volume slider, player name. All persisted.
 class SettingsScreen extends StatefulWidget {
@@ -52,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
           child: Column(
             children: [
+              TransferSaveTile(gameSlug: 'dashrunner'),
               WoodCard(
                 theme: t,
                 child: Column(
