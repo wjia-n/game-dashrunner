@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../cheat_menu.dart';
 import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../theme/runner_themes.dart';
@@ -123,6 +124,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              // Discreet version label: tap 5x quickly to open the cheat
+              // menu (testing & stuck recovery).
+              CheatMenuTrigger(
+                callbacks: CheatCallbacks(
+                  onSkipLevel: () {
+                    // Endless runner: skip to the next 500 m checkpoint on
+                    // the live run (or the next run if none is live).
+                    widget.settings.requestSkipAhead();
+                    widget.audio.click();
+                  },
+                  onInstantWin: () {
+                    // Finish the live run immediately (clean win path).
+                    widget.settings.requestInstantWin();
+                    widget.audio.click();
+                  },
+                  onInfiniteLives: () {
+                    // Persisted by the cheat menu itself; the game screen
+                    // reads CheatMenu.infiniteLives at every run start and
+                    // arms the crash-proof shield on the engine.
+                    widget.audio.click();
+                  },
+                  onUnlockAll: () {
+                    widget.settings.setPro(true);
+                    widget.audio.click();
+                  },
+                  onResetGame: () {
+                    // Unstick: drop any pending cheat requests. The engine
+                    // self-heals mid-run via its watchdog and every run
+                    // starts from a fresh, clean state.
+                    widget.settings.pendingSkipAhead = false;
+                    widget.settings.pendingInstantWin = false;
+                    widget.audio.click();
+                  },
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    'Dash Runner v2.0.0',
+                    style: body(12, t, color: Colors.white38),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

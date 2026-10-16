@@ -55,6 +55,31 @@ class DashSettings extends ChangeNotifier {
   int totalCoins = 0;
   int gamesPlayed = 0;
 
+  // ---- cheat bridge (transient, never persisted) ----
+  // Armed from the settings cheat menu, consumed by the game screen once
+  // a run is live. Lets the cheat menu live in settings (no engine there)
+  // while still driving the live run.
+  bool pendingSkipAhead = false;
+  bool pendingInstantWin = false;
+
+  /// Arm a checkpoint skip; the game screen applies it to the live run.
+  void requestSkipAhead() => pendingSkipAhead = true;
+
+  /// Arm an instant win; the game screen applies it to the live run.
+  void requestInstantWin() => pendingInstantWin = true;
+
+  bool consumeSkipAhead() {
+    final v = pendingSkipAhead;
+    pendingSkipAhead = false;
+    return v;
+  }
+
+  bool consumeInstantWin() {
+    final v = pendingInstantWin;
+    pendingInstantWin = false;
+    return v;
+  }
+
   SharedPreferences? _prefs;
 
   RunnerThemeDef get customTheme {

@@ -11,12 +11,13 @@ import 'dart:math';
 ///  - [crashed]:   death animation owned by engine timer (1.1s). Auto -> over.
 ///  - [over]:      terminal. restart() or toMenu() only.
 ///
-/// Watchdog: a 250ms periodic timer audits every phase. Any phase found
-/// without a live liveness timestamp past its budget is force-recovered:
-/// a stalled countdown finishes instantly, a crashed run that never reached
-/// [over] is completed, a [running] phase that stops receiving step() calls
-/// (e.g. a frozen ticker) has its clock resynced so the world never freezes
-/// or jumps. Stuck states are impossible by construction.
+/// Watchdog: a 250ms periodic timer audits every phase. If step() stops
+/// arriving for >900ms (dead ticker), the watchdog itself drives the
+/// simulation forward in small sub-steps at real-time speed, so the world
+/// can never freeze. A crashed run that still hasn't reached [over] 5s
+/// after the crash is force-finished. The runner therefore always either
+/// progresses or fails cleanly with a working restart — stuck states are
+/// impossible by construction.
 ///
 /// The UI never mutates game state directly; it renders [snapshot] and calls
 /// the input methods. All scoring is emitted as [DashEvent]s so every point
@@ -196,7 +197,14 @@ class DashEngine {
 
   double countdownT = 0;
   DateTime _lastStep = DateTime.now();
+  DateTime _phaseSince = DateTime.now(); // wall-clock entry of current phase
   Timer? _watchdog;
+
+  /// Cheat: crash-proof shield (infinite lives). Collisions become
+  /// shield-saves instead of ending the run. Set by the UI from the
+  /// cheat menu; survives restarts until the cheat is toggled off.
+  bool crashProof = false;
+  double _graceT = 0; // post-save invulnerability window
 
   // View metrics, set by the UI before stepping.
   double viewW = 800;
@@ -219,6 +227,7 @@ class DashEngine {
     if (phase == p) return;
     phase = p;
     _lastStep = DateTime.now();
+    _phaseSince = _lastStep;
     onPhase?.call(p);
   }
 
@@ -228,32 +237,35 @@ class DashEngine {
     onEvent?.call(e);
   }
 
-  /// Watchdog: recover any phase found without liveness.
+  /// Watchdog: guarantees every live phase keeps a driver. If the ticker
+  /// stops calling step() for >900ms (frozen vsync, background stall,
+  /// muted ticker with phase still live), the watchdog itself drives the
+  /// simulation forward in small sub-steps at real-time speed, so the
+  /// world can never silently freeze. A crashed run that still hasn't
+  /// reached [over] 5s after the crash is force-finished. The runner
+  /// therefore always either progresses or fails cleanly with a working
+  /// restart — a silent stuck state is impossible by construction.
   void _audit() {
     final now = DateTime.now();
-    final silent = now.difference(_lastStep);
-    switch (phase) {
-      case DashPhase.ready:
-      case DashPhase.paused:
-      case DashPhase.over:
-        return; // stable states, nothing to recover
-      case DashPhase.countdown:
-        if (silent.inMilliseconds > 1500) {
-          // Ticker died mid-countdown: finish it now.
-          countdownT = 0;
-          _setPhase(DashPhase.running);
-        }
-      case DashPhase.running:
-        if (silent.inMilliseconds > 900) {
-          // step() stopped arriving (frozen ticker): resync the clock so the
-          // world continues instead of freezing or teleporting.
-          _lastStep = now;
-        }
-      case DashPhase.crashed:
-        if (silent.inMilliseconds > 2000) {
-          // Death animation never completed: force the run over.
-          _finish();
-        }
+    final drivable = phase == DashPhase.countdown ||
+        phase == DashPhase.running ||
+        phase == DashPhase.crashed;
+    if (!drivable) return; // ready/paused/over: stable by design
+    final silentMs = now.difference(_lastStep).inMilliseconds;
+    if (silentMs > 900) {
+      // Ticker is dead: become the driver. Sub-step in <=50ms chunks so
+      // physics, spawning and collision keep full fidelity.
+      var remaining = silentMs / 1000.0;
+      var chunks = 0;
+      while (remaining > 0.001 && chunks < 90 && phase != DashPhase.over) {
+        step(remaining > 0.05 ? 0.05 : remaining);
+        remaining -= 0.05;
+        chunks++;
+      }
+    }
+    if (phase == DashPhase.crashed &&
+        now.difference(_phaseSince).inMilliseconds > 5000) {
+      _finish(); // absolute backstop: death always resolves to over
     }
   }
 
@@ -301,12 +313,29 @@ class DashEngine {
     _setPhase(DashPhase.ready);
   }
 
+  /// Cheat: skip ahead to the next 500 m checkpoint. The normal milestone
+  /// logic awards the points on the next step; nearby threats are cleared
+  /// so the skip never insta-kills.
+  void debugSkipAhead() {
+    if (phase != DashPhase.running) return;
+    dist = _nextMilestone.toDouble() + 1;
+    obstacles.removeWhere((o) => o.x < playerX + 240);
+  }
+
+  /// Cheat: end the run immediately as a clean finish (instant win path).
+  /// The over panel shows with a working restart, like any finished run.
+  void debugForceFinish() {
+    if (phase != DashPhase.running && phase != DashPhase.crashed) return;
+    _finish();
+  }
+
   void _reset() {
     y = 0;
     vy = 0;
     sliding = false;
     slideT = 0;
     crashT = 0;
+    _graceT = 0;
     dist = 0;
     speed = mode.baseSpeed;
     coins = 0;
@@ -353,6 +382,7 @@ class DashEngine {
 
   void _stepRunning(double dt) {
     time += dt;
+    if (_graceT > 0) _graceT -= dt;
     speed = (mode.baseSpeed + min(dist / 40, mode.maxSpeed - mode.baseSpeed))
         .clamp(mode.baseSpeed, mode.maxSpeed);
     dist += speed * dt;
@@ -430,7 +460,7 @@ class DashEngine {
           o.x + d.$1 > px + 10 &&
           pTop < d.$3 + d.$2 &&
           pTop + pH > d.$3 + 8;
-      if (overlap) {
+      if (overlap && _graceT <= 0) {
         _crash();
         return;
       }
@@ -490,6 +520,14 @@ class DashEngine {
 
   void _crash() {
     if (phase != DashPhase.running) return;
+    if (crashProof) {
+      // Infinite-lives cheat: shrug off the hit and keep running.
+      nearMisses++;
+      _graceT = 1.2;
+      obstacles.removeWhere((o) => (o.x - playerX).abs() < 160);
+      _emit(DashEventKind.nearMiss, 'Shield save! +5', 5);
+      return;
+    }
     crashT = 0;
     _setPhase(DashPhase.crashed);
     _emit(DashEventKind.crash, 'Crash!', 0);

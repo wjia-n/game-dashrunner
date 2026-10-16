@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
+import '../cheat_menu.dart';
 import '../engine/dash_engine.dart';
 import '../services/audio_service.dart';
 import '../services/settings_service.dart';
@@ -116,6 +117,17 @@ class _GameScreenState extends State<GameScreen>
     _last = elapsed;
     if (!mounted) return;
     _engine.step(dt);
+    // Cheat bridge: requests armed from the settings cheat menu. Only
+    // consume when a run is live so a request armed early isn't lost.
+    if (_engine.phase == DashPhase.running &&
+        widget.settings.consumeSkipAhead()) {
+      _engine.debugSkipAhead();
+    }
+    if ((_engine.phase == DashPhase.running ||
+            _engine.phase == DashPhase.crashed) &&
+        widget.settings.consumeInstantWin()) {
+      _engine.debugForceFinish();
+    }
     // countdown ticks
     final c = _engine.countdownT.ceil();
     if (_engine.phase == DashPhase.countdown && c != _lastCountdown) {
@@ -169,8 +181,16 @@ class _GameScreenState extends State<GameScreen>
     } catch (_) {}
   }
 
+  /// Apply cheats armed from the settings cheat menu at every run start.
+  /// Infinite lives (persisted by the cheat menu) arms the engine's
+  /// crash-proof shield; everything else flows through the pending flags.
+  Future<void> _applyCheats() async {
+    _engine.crashProof = await CheatMenu.infiniteLives;
+  }
+
   void _restart() {
     widget.audio.gameStart();
+    _applyCheats();
     setState(() {
       _recorded = false;
       _isBest = false;
@@ -204,6 +224,7 @@ class _GameScreenState extends State<GameScreen>
             onTap: () {
               if (_engine.phase == DashPhase.ready) {
                 widget.audio.gameStart();
+                _applyCheats();
                 _engine.start();
               } else if (_engine.phase == DashPhase.running) {
                 _engine.jump();
@@ -354,6 +375,7 @@ class _GameScreenState extends State<GameScreen>
               theme: t,
               onPressed: () {
                 widget.audio.gameStart();
+                _applyCheats();
                 _engine.start();
               },
             ),
@@ -415,6 +437,7 @@ class _GameScreenState extends State<GameScreen>
                     _isBest = false;
                     _toasts.clear();
                     _lastCountdown = 4;
+                    _applyCheats();
                     _engine.start();
                   });
                 },
