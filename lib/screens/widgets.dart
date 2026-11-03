@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../theme/runner_themes.dart';
 
@@ -150,8 +151,9 @@ class ProBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.black45),
         ),
-        child: const Text('PRO',
-            style: TextStyle(
+        child: Text(
+            defaultTargetPlatform == TargetPlatform.iOS ? '🔒' : 'PRO',
+            style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
                 color: Color(0xFF2B1B0E))),

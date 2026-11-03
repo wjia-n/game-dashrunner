@@ -67,6 +67,16 @@ extension DashModeInfo on DashMode {
     }
   }
 
+  /// iOS variant: same blurbs without the Pro tag (Android keeps the original).
+  String get blurbIos {
+    switch (this) {
+      case DashMode.extreme:
+        return 'Blistering speed, dense obstacles.';
+      default:
+        return blurb;
+    }
+  }
+
   double get baseSpeed {
     switch (this) {
       case DashMode.chill:

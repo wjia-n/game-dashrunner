@@ -187,8 +187,9 @@ class _MenuScreenState extends State<MenuScreen> {
                 color: const Color(0xFFD4A017),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text('PRO',
-                  style: TextStyle(
+              child: Text(
+                  defaultTargetPlatform == TargetPlatform.iOS ? '⭐' : 'PRO',
+                  style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF2B1B0E))),
             ),
@@ -254,7 +255,7 @@ class _MenuScreenState extends State<MenuScreen> {
       onTap: () {
         if (locked) {
           showTrailSnack(
-              context, 'Extreme Dash is a PRO mode — see the PRO screen!', t);
+              context, defaultTargetPlatform == TargetPlatform.iOS ? 'Extreme Dash needs Gold Star — see the Gold Star screen!' : 'Extreme Dash is a PRO mode — see the PRO screen!', t);
           return;
         }
         widget.audio.click();
@@ -284,7 +285,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ],
             ),
             const SizedBox(height: 3),
-            Text(m.blurb,
+            Text(defaultTargetPlatform == TargetPlatform.iOS ? m.blurbIos : m.blurb,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: body(11, t, color: Colors.white60)),
@@ -318,7 +319,7 @@ class _MenuScreenState extends State<MenuScreen> {
       onTap: () {
         if (locked) {
           showTrailSnack(
-              context, '${th.name} is a PRO theme — unlock them all!', t);
+              context, defaultTargetPlatform == TargetPlatform.iOS ? '${th.name} needs Gold Star — see the Gold Star screen!' : '${th.name} is a PRO theme — unlock them all!', t);
           return;
         }
         widget.audio.click();
@@ -367,7 +368,7 @@ class _MenuScreenState extends State<MenuScreen> {
       onTap: () {
         if (!_s.isPro) {
           showTrailSnack(
-              context, 'The theme creator is a PRO feature!', t);
+              context, defaultTargetPlatform == TargetPlatform.iOS ? 'The theme creator needs Gold Star!' : 'The theme creator is a PRO feature!', t);
           return;
         }
         widget.audio.click();
@@ -422,7 +423,7 @@ class _MenuScreenState extends State<MenuScreen> {
               onTap: () {
                 if (locked) {
                   showTrailSnack(context,
-                      '${s.name} gear is PRO-only — see the PRO screen!', t);
+                      defaultTargetPlatform == TargetPlatform.iOS ? '${s.name} gear needs Gold Star — see the Gold Star screen!' : '${s.name} gear is PRO-only — see the PRO screen!', t);
                   return;
                 }
                 widget.audio.click();
@@ -486,7 +487,7 @@ class _MenuScreenState extends State<MenuScreen> {
               onTap: () {
                 if (locked) {
                   showTrailSnack(context,
-                      '${s.name} is PRO-only — see the PRO screen!', t);
+                      defaultTargetPlatform == TargetPlatform.iOS ? '${s.name} needs Gold Star — see the Gold Star screen!' : '${s.name} is PRO-only — see the PRO screen!', t);
                   return;
                 }
                 widget.audio.click();
