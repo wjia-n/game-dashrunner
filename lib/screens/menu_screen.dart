@@ -574,7 +574,7 @@ class _MenuScreenState extends State<MenuScreen> {
           const SizedBox(width: 26),
           _icon(Icons.star_rate, 'Rate', t, _requestReview),
           const SizedBox(width: 26),
-          _icon(Icons.workspace_premium, 'PRO', t, () {
+          _icon(Icons.workspace_premium, defaultTargetPlatform == TargetPlatform.iOS ? 'Gold Star' : 'PRO', t, () {
             widget.audio.click();
             Navigator.of(context).push(
               MaterialPageRoute(
